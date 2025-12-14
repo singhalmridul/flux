@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model FluxNode {
+  id          String   @id @default(uuid())
+  type        String   
+  title       String
+  content     String?
+  
+  // Storing JSON data as strings for maximum compatibility
+  properties  String?  // { status: 'todo', priority: 'high', date: '...' }
+  position    String?  // { x: 0, y: 0 }
+  
+  startDate   DateTime?
+  endDate     DateTime?
+  
+  parentId    String?
+  parent      FluxNode? @relation("Hierarchy", fields: [parentId], references: [id])
+  children    FluxNode[] @relation("Hierarchy")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+
+  sourceEdges FluxEdge[] @relation("SourceEdges")
+  targetEdges FluxEdge[] @relation("TargetEdges")
+}
+
+model FluxEdge {
+  id        String   @id @default(uuid())
+  sourceId  String
+  targetId  String
+  
+  source    FluxNode @relation("SourceEdges", fields: [sourceId], references: [id], onDelete: Cascade)
+  target    FluxNode @relation("TargetEdges", fields: [targetId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id            String          @id @default(cuid())
+  name          String?
+  email         String?         @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  nodes         FluxNode[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+ 
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  @@unique([provider, providerAccountId])
+}
+ 
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+ 
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+ 
+  @@unique([identifier, token])
+}
